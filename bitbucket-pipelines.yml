@@ -1,0 +1,35 @@
+#  Template python-build
+
+#  This template allows you to validate your python code.
+#  The workflow allows running tests and code linting on the default branch.
+
+image: python:3.8
+
+pipelines:
+  default:
+    - step:
+        name: Test
+        caches:
+          - pip
+        script:
+          - if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          - pip install pytest
+          - if [ -d tests]; then pytest -v tests/* --junitxml=test-reports/report.xml; fi
+    - step:
+        name: Build
+        script:
+          # - cd wallet-analysis
+          - git archive --format=tar.gz master -o wallet-analysis.tar.gz
+        artifacts:
+          - wallet-analysis.tar.gz
+    - step:
+        name: Deploy to production
+        deployment: production
+        caches:
+          - pip
+        script:
+          - pipe: atlassian/heroku-deploy:0.1.1
+            variables:
+              HEROKU_API_KEY: $HEROKU_API_KEY
+              HEROKU_APP_NAME: $HEROKU_APP_NAME
+              ZIP_FILE: wallet-analysis.tar.gz
