@@ -7,7 +7,7 @@ from os import getenv
 load_dotenv()
 san.ApiConfig=getenv('san_api')
 
-from fun import get_top_wallets, get_transactions
+from fun import get_top_wallets, get_transactions, get_hour_date
 
 from plotly.subplots import make_subplots
 from plotly.graph_objects import Scatter
@@ -31,14 +31,12 @@ threshold = number_input("Input threshold transaction")
 if wallet:
 	transactions = get_transactions(wallet=wallet, threshold=threshold)
 
-	price = san.get('price_usd/bitcoin', from_date=transactions.index[-1], interval='1h')
+	price = san.get('price_usd/bitcoin', from_date=get_hour_date(transactions.index[-1]), interval='1h')
 	price=price.assign(price_change_1h=price.shift(-1)-price, price_change_4h=price.shift(-4)-price, price_change_12h=price.shift(-12)-price, price_change_1d=price.shift(-24)-price)
 
 	df = DataFrame(columns=['datetime', 'amount', 'price', 'price_change_1h', 'price_change_4h', 'price_change_12h', 'price_change_1d']).set_index('datetime')
 	for dt, data in transactions.iterrows():
-		date, time = dt.split()
-		hour, min, sec = time.split(':')
-		datetime = f"{date} {hour}:00:00+00:00"
+		datetime = get_hour_date(dt)
 		if datetime in df.index:
 			df.at[datetime, 'amount'] += data.balance_change
 		else:

@@ -24,3 +24,8 @@ def get_top_wallets():
 	top_address.set_index('Ranking', inplace=True)
 	driver.quit()
 	return top_address
+
+def get_hour_date(dt):
+	date, time = dt.split()
+	hour, min, sec = time.split(':')
+	return f"{date} {hour}:00:00+00:00"	
