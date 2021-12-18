@@ -20,7 +20,9 @@ def get_top_wallets():
 	rows = driver.find_elements(By.TAG_NAME, "tr")
 	top_address = DataFrame(columns=list(map(lambda x: x.text, rows[0].find_elements(By.TAG_NAME, "th"))))
 	for row in rows[1:]:
-		top_address.loc[len(top_address)] = list(map(lambda x: x.text, row.find_elements(By.TAG_NAME, "td")))
+		idx = len(top_address)
+		top_address.loc[idx] = list(map(lambda x: x.text, row.find_elements(By.TAG_NAME, "td")))
+		top_address.at[idx, 'Address'] = row.find_element(By.TAG_NAME, "a").get_attribute("href").split('/')[-1]
 	top_address.set_index('Ranking', inplace=True)
 	driver.quit()
 	return top_address
