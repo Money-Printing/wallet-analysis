@@ -4,21 +4,24 @@ from streamlit import title, subheader, write, text_input, warning, plotly_chart
 import san
 from dotenv import load_dotenv
 from os import getenv
-load_dotenv()
-san.ApiConfig=getenv('san_api')
 
 from fun import get_top_wallets, get_transactions, get_hour_date
 
 from plotly.subplots import make_subplots
 from plotly.graph_objects import Scatter
 
+load_dotenv()
+san.ApiConfig = getenv('san_api')
+
 set_page_config(layout="wide")
 
 title("BTC Wallet Analyser")
 
+
 @cache
 def get_cache():
 	return get_top_wallets()
+
 
 top_wallets = get_cache()
 subheader("Top 50 Rich Wallets")
@@ -32,18 +35,30 @@ if wallet:
 	transactions = get_transactions(wallet=wallet, threshold=threshold)
 	if len(transactions) == 0:
 		warning("No transaction in the wallet matching the filter")
-	else:		
+	else:
 		price = san.get('price_usd/bitcoin', from_date=get_hour_date(transactions.index[-1]), interval='1h')
-		price=price.assign(price_change_1h=price.shift(-1)-price, price_change_4h=price.shift(-4)-price, price_change_12h=price.shift(-12)-price, price_change_1d=price.shift(-24)-price)
-
-		df = DataFrame(columns=['datetime', 'amount', 'price', 'price_change_1h', 'price_change_4h', 'price_change_12h', 'price_change_1d']).set_index('datetime')
+		price = price.assign(
+			price_change_1h=price.shift(-1) - price,
+			price_change_4h=price.shift(-4) - price,
+			price_change_12h=price.shift(-12) - price,
+			price_change_1d=price.shift(-24) - price
+		)
+		df = DataFrame(
+			columns=[
+				'datetime',
+				'amount',
+				'price',
+				'price_change_1h',
+				'price_change_4h',
+				'price_change_12h',
+				'price_change_1d']).set_index('datetime')
 		for dt, data in transactions.iterrows():
 			datetime = get_hour_date(dt)
 			if datetime in df.index:
 				df.at[datetime, 'amount'] += data.balance_change
 			else:
 				df.loc[datetime] = [data.balance_change] + price.loc[datetime].to_list()
-		
+
 		df_deposit = df[df.amount > threshold]
 		df_withdrawal = df[df.amount < -threshold]
 		df_withdrawal.amount = df_withdrawal.amount.abs()
@@ -66,22 +81,10 @@ if wallet:
 				title='Timeline',
 				rangeselector=dict(
 					buttons=list([
-						dict(count=1,
-								label="1m",
-								step="month",
-								stepmode="backward"),
-						dict(count=6,
-								label="6m",
-								step="month",
-								stepmode="backward"),
-						dict(count=1,
-								label="YTD",
-								step="year",
-								stepmode="todate"),
-						dict(count=1,
-								label="1y",
-								step="year",
-								stepmode="backward"),
+						{'count': 1, 'label': "1m", 'step': "month", 'stepmode': "backward"},
+						{'count': 6, 'label': "6m", 'step': "month", 'stepmode': "backward"},
+						{'count': 1, 'label': "YTD", 'step': "year", 'stepmode': "todate"},
+						{'count': 1, 'label': "1y", 'step': "year", 'stepmode': "backward"},
 						dict(step="all")
 					]),
 					# bgcolor = 'black'
@@ -90,7 +93,7 @@ if wallet:
 					visible=True,
 				),
 				type="date"
-				),
+			),
 			yaxis=dict(
 				title="Price (USD)",
 				fixedrange=False
@@ -100,28 +103,25 @@ if wallet:
 			# width=2048,
 			# height=1080
 		)
-		deposit_marker_size = (50*df_deposit.amount)/df_deposit.amount.max()
-		withdrawal_marker_size = (50*df_withdrawal.amount)/df_withdrawal.amount.max()
+		deposit_marker_size = (50 * df_deposit.amount) / df_deposit.amount.max()
+		withdrawal_marker_size = (50 * df_withdrawal.amount) / df_withdrawal.amount.max()
 		deposit_marker_size[deposit_marker_size < 15] = 15
 		withdrawal_marker_size[withdrawal_marker_size < 15] = 15
 		fig.add_traces([
-			Scatter(x=df_deposit.index,
+			Scatter(
+				x=df_deposit.index,
 				y=df_deposit.price,
 				mode="markers",
 				name="Deposits",
 				opacity=0.8,
-				marker={
-					'size': deposit_marker_size,
-				},
-				customdata=df_deposit,
-				hovertemplate="<br>".join([
-				"%{x}",
-				"Price (USD): %{y}",
-				"Deposit: %{customdata[0]} BTC",
-				"Price Change(1h): %{customdata[2]} USD",
-				"Price Change(4h): %{customdata[3]} USD",
-				"Price Change(12h): %{customdata[4]} USD",
-				"Price Change(1d): %{customdata[5]} USD",
+				marker={'size': deposit_marker_size, }, customdata=df_deposit, hovertemplate="<br>".join([
+					"%{x}",
+					"Price (USD): %{y}",
+					"Deposit: %{customdata[0]} BTC",
+					"Price Change(1h): %{customdata[2]} USD",
+					"Price Change(4h): %{customdata[3]} USD",
+					"Price Change(12h): %{customdata[4]} USD",
+					"Price Change(1d): %{customdata[5]} USD",
 				])
 			),
 			Scatter(
@@ -135,13 +135,13 @@ if wallet:
 				},
 				customdata=df_withdrawal,
 				hovertemplate="<br>".join([
-				"%{x}",
-				"Price (USD): %{y}",
-				"Withdrawal: %{customdata[0]} BTC",
-				"Price Change(1h): %{customdata[2]} USD",
-				"Price Change(4h): %{customdata[3]} USD",
-				"Price Change(12h): %{customdata[4]} USD",
-				"Price Change(1d): %{customdata[5]} USD",
+					"%{x}",
+					"Price (USD): %{y}",
+					"Withdrawal: %{customdata[0]} BTC",
+					"Price Change(1h): %{customdata[2]} USD",
+					"Price Change(4h): %{customdata[3]} USD",
+					"Price Change(12h): %{customdata[4]} USD",
+					"Price Change(1d): %{customdata[5]} USD",
 				])
 			)
 		])
@@ -155,9 +155,9 @@ if wallet:
 			usd_purchased += btc_left * price.value[-1]
 		else:
 			usd_spent += btc_left * price.value[-1]
-		profit = (usd_purchased - usd_spent)/usd_spent
+		profit = (usd_purchased - usd_spent) / usd_spent
 
-		hodl_profit = (price.value[-1]-price.value[0])/price.value[0]
+		hodl_profit = (price.value[-1] - price.value[0]) / price.value[0]
 
 		write("Profit on hodling:", hodl_profit * 100, " %")
 		write("Profit on copytrading wallet:", profit * 100, " %")

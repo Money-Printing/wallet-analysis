@@ -6,10 +6,14 @@ from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 
+
 def get_transactions(wallet, threshold=0):
-	transactions =  DataFrame(requests.get("https://api.blockchair.com/bitcoin/dashboards/address/{wallet}?transaction_details=true".format(wallet=wallet)).json()['data'][wallet]['transactions']).set_index('time')
+	transactions = DataFrame(requests.get(
+		"https://api.blockchair.com/bitcoin/dashboards/address/{wallet}?transaction_details=true".format(
+			wallet=wallet)).json()['data'][wallet]['transactions']).set_index('time')
 	transactions.balance_change /= 10e7
 	return transactions[transactions.balance_change.abs() > threshold]
+
 
 def get_top_wallets():
 	chrome_options = Options()
@@ -27,7 +31,8 @@ def get_top_wallets():
 	driver.quit()
 	return top_address
 
+
 def get_hour_date(dt):
 	date, time = dt.split()
-	hour, min, sec = time.split(':')
-	return f"{date} {hour}:00:00+00:00"	
+	hour, minute, second = time.split(':')
+	return f"{date} {hour}:00:00+00:00"
