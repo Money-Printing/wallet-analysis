@@ -1,11 +1,12 @@
 from pandas import DataFrame
-from streamlit import title, subheader, write, text_input, warning, plotly_chart, number_input, set_page_config, cache
+from streamlit import title, subheader, write, text_input, warning, plotly_chart, number_input, set_page_config, cache, \
+	sidebar
 
 import san
 from dotenv import load_dotenv
 from os import getenv
 
-from fun import get_top_wallets, get_transactions, get_hour_date
+from fun import *
 
 from plotly.subplots import make_subplots
 from plotly.graph_objects import Scatter
@@ -15,15 +16,25 @@ san.ApiConfig = getenv('san_api')
 
 set_page_config(layout="wide")
 
-title("BTC Wallet Analyser")
+coin = sidebar.selectbox(
+	"Choose Coin",
+	("BTC", "ETH", "USDT")
+)
+
+title(f"{coin} Wallet Analyser")
 
 
 @cache
-def get_cache():
-	return get_top_wallets()
+def get_top_wallets(coin):
+	if coin == 'BTC':
+		return get_top_wallets_btc()
+	if coin == 'ETH':
+		return get_top_wallets_eth()
+	if coin == 'USDT':
+		return get_top_wallets_usdt()
 
 
-top_wallets = get_cache()
+top_wallets = get_top_wallets(coin)
 subheader("Top 50 Rich Wallets")
 write(top_wallets)
 

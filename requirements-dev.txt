@@ -10,12 +10,4 @@
 # `Pipfile.lock` and then regenerate `requirements*.txt`.
 ################################################################################
 
-numpy
-pandas
-plotly
-python-dotenv
-requests
-sanpy
-selenium
-streamlit
-undetected-chromedriver
+jupyter
