@@ -18,3 +18,4 @@ requests
 sanpy
 selenium
 streamlit
+undetected-chromedriver

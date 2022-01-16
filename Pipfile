@@ -12,8 +12,10 @@ selenium = "*"
 python-dotenv = "*"
 plotly = "*"
 requests = "*"
+undetected-chromedriver = "*"
 
 [dev-packages]
+jupyter = "*"
 
 [requires]
 python_version = "3.9"
