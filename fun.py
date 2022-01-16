@@ -25,7 +25,7 @@ def get_top_wallets_btc():
 	chrome_options.add_argument("--headless")
 	driver = Chrome(options=chrome_options)
 	driver.get("https://btc.com/btc/top-address")
-	sleep(1)
+	sleep(2)
 	rows = driver.find_elements(By.TAG_NAME, "tr")
 	top_address = DataFrame(columns=list(map(lambda x: x.text, rows[0].find_elements(By.TAG_NAME, "th"))))
 	for row in rows[1:]:
@@ -42,7 +42,7 @@ def get_top_wallets_eth():
 	chrome_options.add_argument("--headless")
 	driver = Chrome(options=chrome_options)
 	driver.get("https://etherscan.io/accounts/1?ps=100")
-	sleep(1)
+	sleep(2)
 	rows = driver.find_elements(By.TAG_NAME, "tr")
 	top_address = DataFrame(columns=list(map(lambda x: x.text, rows[0].find_elements(By.TAG_NAME, "th"))))
 	for row in rows[1:]:
@@ -58,7 +58,7 @@ def get_top_wallets_usdt():
 	chrome_options.add_argument("--headless")
 	driver = Chrome(options=chrome_options)
 	driver.get("https://wallet.tether.to/richlist")
-	sleep(1)
+	sleep(2)
 	rows = driver.find_elements(By.TAG_NAME, "tr")
 	top_address = DataFrame(columns=list(map(lambda x: x.text, rows[0].find_elements(By.TAG_NAME, "th"))))
 	for row in rows[1:]:
