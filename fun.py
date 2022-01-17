@@ -1,6 +1,6 @@
 from os import getenv
 from numpy import NaN, isnan
-from pandas import DataFrame, to_datetime
+from pandas import DataFrame, to_datetime, read_csv
 from plotly.subplots import make_subplots
 from plotly.graph_objects import Scatter
 import requests
@@ -21,51 +21,15 @@ def get_hour_date(dt):
 
 
 def get_top_wallets_btc():
-	chrome_options = ChromeOptions()
-	chrome_options.add_argument("--headless")
-	driver = Chrome(options=chrome_options)
-	driver.get("https://btc.com/btc/top-address")
-	sleep(2)
-	rows = driver.find_elements(By.TAG_NAME, "tr")
-	top_address = DataFrame(columns=list(map(lambda x: x.text, rows[0].find_elements(By.TAG_NAME, "th"))))
-	for row in rows[1:]:
-		idx = len(top_address)
-		top_address.loc[idx] = list(map(lambda x: x.text, row.find_elements(By.TAG_NAME, "td")))
-		top_address.at[idx, 'Address'] = row.find_element(By.TAG_NAME, "a").get_attribute("href").split('/')[-1]
-	top_address.set_index('Ranking', inplace=True)
-	driver.quit()
-	return top_address
+	return read_csv(getenv('top_wallets_btc_csv_url')).set_index('Ranking')
 
 
 def get_top_wallets_eth():
-	chrome_options = ChromeOptions()
-	chrome_options.add_argument("--headless")
-	driver = Chrome(options=chrome_options)
-	driver.get("https://etherscan.io/accounts/1?ps=100")
-	sleep(2)
-	rows = driver.find_elements(By.TAG_NAME, "tr")
-	top_address = DataFrame(columns=list(map(lambda x: x.text, rows[0].find_elements(By.TAG_NAME, "th"))))
-	for row in rows[1:]:
-		idx = len(top_address)
-		top_address.loc[idx] = list(map(lambda x: x.text, row.find_elements(By.TAG_NAME, "td")))
-	top_address.set_index('Rank', inplace=True)
-	driver.quit()
-	return top_address
+	return read_csv(getenv('top_wallets_eth_csv_url')).set_index('Rank')
 
 
 def get_top_wallets_usdt():
-	chrome_options = ChromeOptions()
-	chrome_options.add_argument("--headless")
-	driver = Chrome(options=chrome_options)
-	driver.get("https://wallet.tether.to/richlist")
-	sleep(2)
-	rows = driver.find_elements(By.TAG_NAME, "tr")
-	top_address = DataFrame(columns=list(map(lambda x: x.text, rows[0].find_elements(By.TAG_NAME, "th"))))
-	for row in rows[1:]:
-		idx = len(top_address)
-		top_address.loc[idx] = list(map(lambda x: x.text, row.find_elements(By.TAG_NAME, "td")))
-	driver.quit()
-	return top_address
+	return read_csv(getenv('top_wallets_usdt_csv_url'), index_col=0)
 
 
 def get_data_btc(address, offset=0):
