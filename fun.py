@@ -36,7 +36,7 @@ def get_data_btc(address, offset=0):
 	transactions = requests.get(
 		"https://api.blockchair.com/bitcoin/dashboards/address/{address}?transaction_details=true".format(
 			address=address)).json()['data'][address]['transactions']
-	if not transactions:
+	if not transactions or type(transactions) is not list:
 		return DataFrame()
 	data = san.get('price_usd/bitcoin', from_date=get_hour_date(transactions[-1]['time']), interval='1h')
 	data['transaction'] = NaN
@@ -58,7 +58,7 @@ def get_data_eth(address, offset=0, threshold=0, sort='desc'):
 		f"https://api.etherscan.io/api?module=account&action=txlist&address={address}&startblock=0&endblock=99999999"
 		f"&page=1&offset={offset}&sort={sort}&apikey={etherscan_api}").json()
 	transactions = response['result']
-	if not transactions:
+	if not transactions or type(transactions) is not list:
 		return DataFrame()
 	data = san.get(
 		'price_usd/ethereum',
@@ -78,8 +78,32 @@ def get_data_eth(address, offset=0, threshold=0, sort='desc'):
 	return data
 
 
-def get_data_usdt():
-	return DataFrame()
+def get_data_usdt_erc(address, offset=0, threshold=0, sort='desc'):
+	etherscan_api = getenv('etherscan_api')
+	contract_address = "0xdAC17F958D2ee523a2206206994597C13D831ec7"
+	response = requests.get(
+		f"https://api.etherscan.io/api?module=account&action=tokentx&contractaddress={contract_address}"
+		f"&address={address}&startblock=0&endblock=99999999&page=1&offset={offset}&sort={sort}&apikey={etherscan_api}"
+	).json()
+	transactions = response['result']
+	if not transactions or type(transactions) is not list:
+		return DataFrame()
+	data = san.get(
+		'price_usd/bitcoin',
+		from_date=get_hour_date(to_datetime(transactions[-1]['timeStamp'], unit='s').__str__()),
+		interval='1h'
+	)
+	data['transaction'] = NaN
+	for transaction in transactions:
+		time = get_hour_date(to_datetime(transaction['timeStamp'], unit='s').__str__())
+		value = float(transaction['value']) / 1e6
+		if transaction['from'] == address:
+			value = -value
+		if isnan(data.loc[time]['transaction']):
+			data.loc[time]['transaction'] = value
+		else:
+			data.loc[time]['transaction'] += value
+	return data
 
 
 def assign_value_change(data):
@@ -100,8 +124,8 @@ def get_deposits_withdrawals(data, threshold=0, inverse=False):
 	return deposit, withdrawal
 
 
-def get_chart(coin, price, deposit, withdrawal):
-	fig = make_subplots(subplot_titles=[f'Wallet Activity vs {coin} Price'])
+def get_chart(coin, price_coin, price, deposit, withdrawal):
+	fig = make_subplots(subplot_titles=[f'Wallet Activity vs {price_coin} Price'])
 	fig.add_trace(
 		Scatter(
 			x=price.index,

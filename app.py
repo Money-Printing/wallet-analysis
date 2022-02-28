@@ -39,25 +39,30 @@ if address:
 	elif coin == 'ETH':
 		data = get_data_eth(address=address, offset=offset, threshold=threshold)
 	elif coin == 'USDT':
-		data = get_data_usdt()
+		if address.startswith('0x') or address.startswith('0X'):
+			data = get_data_usdt_erc(address=address, offset=offset, threshold=threshold)
+		else:
+			data = DataFrame()
 
 	if len(data) == 0:
 		warning("No transaction in the wallet matching the filter")
 	else:
 		data = assign_value_change(data)
 		deposits, withdrawals = get_deposits_withdrawals(data, threshold, inverse)
-		fig = get_chart(coin, data, deposits, withdrawals)
+		price_coin = 'BTC' if coin == 'USDT' else coin
+		fig = get_chart(coin, price_coin, data, deposits, withdrawals)
 		plotly_chart(fig, use_container_width=True)
 
-		hodl_profit = (data.value[-1] - data.value[0]) / data.value[0]
-		usd_spent = sum(deposits.transaction * deposits.value)
-		usd_purchased = sum(withdrawals.transaction * withdrawals.value)
-		coin_left = sum(deposits.transaction) - sum(withdrawals.transaction)
-		if coin_left > 0:
-			usd_purchased += coin_left * data.value[-1]
-		else:
-			usd_spent += coin_left * data.value[-1]
-		profit = (usd_purchased - usd_spent) / usd_spent
+		if coin != 'USDT':
+			hodl_profit = (data.value[-1] - data.value[0]) / data.value[0]
+			usd_spent = sum(deposits.transaction * deposits.value)
+			usd_purchased = sum(withdrawals.transaction * withdrawals.value)
+			coin_left = sum(deposits.transaction) - sum(withdrawals.transaction)
+			if coin_left > 0:
+				usd_purchased += coin_left * data.value[-1]
+			else:
+				usd_spent += coin_left * data.value[-1]
+			profit = (usd_purchased - usd_spent) / usd_spent
 
-		write("Profit on hodling:", hodl_profit * 100, " %")
-		write("Profit on copytrading wallet:", profit * 100, " %")
+			write("Profit on hodling:", hodl_profit * 100, " %")
+			write("Profit on copytrading wallet:", profit * 100, " %")
