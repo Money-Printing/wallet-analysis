@@ -3,11 +3,8 @@ from numpy import NaN, isnan
 from pandas import DataFrame, to_datetime, read_csv
 from plotly.subplots import make_subplots
 from plotly.graph_objects import Scatter
-import requests
-from time import sleep
+from requests import get
 import san
-from undetected_chromedriver import Chrome, ChromeOptions
-from selenium.webdriver.common.by import By
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -32,8 +29,21 @@ def get_top_wallets_usdt():
 	return read_csv(getenv('top_wallets_usdt_csv_url'), index_col=0)
 
 
+def get_bitfinex_btc_wallets():
+	data = DataFrame(get("https://api.blockchair.com/bitcoin/dashboards/addresses/{addresses}?key={key}".format(
+		addresses=','.join(read_csv(getenv('bitfinex_btc_wallets_csv_url'))['Address'].to_list()),
+		key=getenv('blockchair_api'))).json()['data']['addresses']).transpose().drop(
+		columns=['type', 'script_hex', 'output_count', 'unspent_output_count']).sort_values(
+		by=['balance'], ascending=False)
+	data.index.name = 'Address'
+	data = data.reset_index()
+	data.index.name = 'Ranking'
+	data[['balance', 'received', 'spent']] /= 1e8
+	return data
+
+
 def get_data_btc(address, offset=0):
-	transactions = requests.get(
+	transactions = get(
 		"https://api.blockchair.com/bitcoin/dashboards/address/{address}?transaction_details=true".format(
 			address=address)).json()['data'][address]['transactions']
 	if not transactions or type(transactions) is not list:
@@ -52,9 +62,9 @@ def get_data_btc(address, offset=0):
 	return data
 
 
-def get_data_eth(address, offset=0, threshold=0, sort='desc'):
+def get_data_eth(address, offset=0, sort='desc'):
 	etherscan_api = getenv('etherscan_api')
-	response = requests.get(
+	response = get(
 		f"https://api.etherscan.io/api?module=account&action=txlist&address={address}&startblock=0&endblock=99999999"
 		f"&page=1&offset={offset}&sort={sort}&apikey={etherscan_api}").json()
 	transactions = response['result']
@@ -78,10 +88,10 @@ def get_data_eth(address, offset=0, threshold=0, sort='desc'):
 	return data
 
 
-def get_data_usdt_erc(address, offset=0, threshold=0, sort='desc'):
+def get_data_usdt_erc(address, offset=0, sort='desc'):
 	etherscan_api = getenv('etherscan_api')
 	contract_address = "0xdAC17F958D2ee523a2206206994597C13D831ec7"
-	response = requests.get(
+	response = get(
 		f"https://api.etherscan.io/api?module=account&action=tokentx&contractaddress={contract_address}"
 		f"&address={address}&startblock=0&endblock=99999999&page=1&offset={offset}&sort={sort}&apikey={etherscan_api}"
 	).json()

@@ -6,25 +6,27 @@ set_page_config(layout="wide")
 
 coin = sidebar.selectbox(
 	"Choose Coin",
-	("BTC", "ETH", "USDT")
+	("BTC", "ETH", "USDT", "Bitfinex-BTC")
 )
 
 title(f"{coin} Wallet Analyser")
 
 
 @cache
-def get_top_wallets(coin):
+def get_wallets(coin):
 	if coin == 'BTC':
-		return get_top_wallets_btc()
+		return "Top 50 Rich Wallets", get_top_wallets_btc(), get_data_btc
 	if coin == 'ETH':
-		return get_top_wallets_eth()
+		return "Top 100 Rich Wallets", get_top_wallets_eth(), get_data_eth
 	if coin == 'USDT':
-		return get_top_wallets_usdt()
+		return "Top 50 Rich Wallets", get_top_wallets_usdt(), get_data_usdt_erc
+	if coin == 'Bitfinex-BTC':
+		return "Bitfinex BTC Cold Wallets", get_bitfinex_btc_wallets(), get_data_btc
 
 
-top_wallets = get_top_wallets(coin)
-subheader("Top 50 Rich Wallets")
-write(top_wallets)
+subheader_text, wallets, get_data = get_wallets(coin)
+subheader(subheader_text)
+write(wallets)
 
 subheader("Wallet Analysis")
 address = text_input("Input Wallet")
@@ -33,16 +35,7 @@ threshold = number_input("Input threshold transaction", min_value=0)
 inverse = checkbox('Inverse Deposit/Withdrawal')
 
 if address:
-	data = DataFrame()
-	if coin == 'BTC':
-		data = get_data_btc(address=address, offset=offset)
-	elif coin == 'ETH':
-		data = get_data_eth(address=address, offset=offset, threshold=threshold)
-	elif coin == 'USDT':
-		if address.startswith('0x') or address.startswith('0X'):
-			data = get_data_usdt_erc(address=address, offset=offset, threshold=threshold)
-		else:
-			data = DataFrame()
+	data = get_data(address=address, offset=offset)
 
 	if len(data) == 0:
 		warning("No transaction in the wallet matching the filter")
