@@ -9,9 +9,13 @@ from dotenv import load_dotenv
 
 load_dotenv()
 san.ApiConfig = getenv('san_api')
+etherscan_api = getenv('etherscan_api')
+usdt_erc_contract_address = "0xdAC17F958D2ee523a2206206994597C13D831ec7"
 
 
-def get_hour_date(dt):
+def get_hour_date(dt, is_epoch=False):
+	if is_epoch:
+		dt = to_datetime(dt, unit='s').__str__()
 	date, time = dt.split()
 	hour, minute, second = time.split(':')
 	return f"{date} {hour}:00:00+00:00"
@@ -42,78 +46,82 @@ def get_bitfinex_btc_wallets():
 	return data
 
 
-def get_data_btc(address, offset=0):
-	transactions = get(
+def get_btc_transactions(address, offset=None):
+	return get(
 		"https://api.blockchair.com/bitcoin/dashboards/address/{address}?transaction_details=true".format(
-			address=address)).json()['data'][address]['transactions']
-	if not transactions or type(transactions) is not list:
-		return DataFrame()
-	data = san.get('price_usd/bitcoin', from_date=get_hour_date(transactions[-1]['time']), interval='1h')
-	data['transaction'] = NaN
-	if offset:
-		transactions = transactions[:offset]
-	for transaction in transactions:
-		time = get_hour_date(transaction['time'])
-		balance_change = transaction['balance_change'] / 1e8
-		if isnan(data.loc[time]['transaction']):
-			data.loc[time]['transaction'] = balance_change
-		else:
-			data.loc[time]['transaction'] += balance_change
-	return data
+			address=address)).json()['data'][address]['transactions'][:None if offset == 0 else offset]
 
 
-def get_data_eth(address, offset=0, sort='desc'):
-	etherscan_api = getenv('etherscan_api')
-	response = get(
-		f"https://api.etherscan.io/api?module=account&action=txlist&address={address}&startblock=0&endblock=99999999"
-		f"&page=1&offset={offset}&sort={sort}&apikey={etherscan_api}").json()
-	transactions = response['result']
+def get_eth_transactions(address, offset=None, sort='desc'):
+	return get(
+		f"https://api.etherscan.io/api?module=account&action=txlist&address={address}&startblock=0"
+		f"&endblock=99999999&page=1&offset={offset}&sort={sort}&apikey={etherscan_api}").json()['result']
+
+
+def get_usdt_erc_transactions(address, offset=None, sort='desc'):
+	return get(
+		f"https://api.etherscan.io/api?module=account&action=tokentx&contractaddress={usdt_erc_contract_address}"
+		f"&address={address}&startblock=0&endblock=99999999&page=1&offset={offset}&sort={sort}&apikey={etherscan_api}"
+	).json()['result']
+
+
+def is_blockchair_transaction_withdrawal(transaction):
+	return transaction['balance_change'] < 0
+
+
+def is_etherscan_transaction_withdrawal(transaction, address):
+	return transaction['from'] == address
+
+
+def build_transaction_price_data(transactions, san_price_dataset_name, time_key, transaction_key,
+                                 is_epoch_time, is_withdrawal):
 	if not transactions or type(transactions) is not list:
 		return DataFrame()
 	data = san.get(
-		'price_usd/ethereum',
-		from_date=get_hour_date(to_datetime(transactions[-1]['timeStamp'], unit='s').__str__()),
+		san_price_dataset_name,
+		from_date=get_hour_date(transactions[-1][time_key], is_epoch_time),
 		interval='1h'
 	)
+	price = data.iloc[0]['value']
 	data['transaction'] = NaN
 	for transaction in transactions:
-		time = get_hour_date(to_datetime(transaction['timeStamp'], unit='s').__str__())
-		value = float(transaction['value']) / 1e18
-		if transaction['from'] == address:
-			value = -value
-		if isnan(data.loc[time]['transaction']):
-			data.loc[time]['transaction'] = value
+		time = get_hour_date(transaction[time_key], is_epoch_time)
+		amount = float(transaction[transaction_key]) / 1e8
+		if is_withdrawal(transaction) and amount > 0:
+			amount = -amount
+		if time in data.index:
+			price = data.loc[time]['value']
+			if isnan(data.loc[time]['transaction']):
+				data.loc[time]['transaction'] = amount
+			else:
+				data.loc[time]['transaction'] += amount
 		else:
-			data.loc[time]['transaction'] += value
+			data.loc[time] = [price, amount]
+		# if time not in data.index:
+		# 	continue
+		# if isnan(data.loc[time]['transaction']):
+		# 	data.loc[time]['transaction'] = amount
+		# else:
+		# 	data.loc[time]['transaction'] += amount
 	return data
+
+
+def get_data_btc(address, offset=0):
+	transactions = get_btc_transactions(address, offset)
+	return build_transaction_price_data(transactions, 'price_usd/bitcoin', 'time', 'balance_change', False,
+	                                    is_blockchair_transaction_withdrawal)
+
+
+def get_data_eth(address, offset=None, sort='desc'):
+	transactions = get_eth_transactions(address, offset, sort)
+	return build_transaction_price_data(transactions, 'price_usd/ethereum', 'timeStamp', 'value', True,
+	                                    lambda transaction: is_etherscan_transaction_withdrawal(transaction, address))
 
 
 def get_data_usdt_erc(address, offset=0, sort='desc'):
-	etherscan_api = getenv('etherscan_api')
-	contract_address = "0xdAC17F958D2ee523a2206206994597C13D831ec7"
-	response = get(
-		f"https://api.etherscan.io/api?module=account&action=tokentx&contractaddress={contract_address}"
-		f"&address={address}&startblock=0&endblock=99999999&page=1&offset={offset}&sort={sort}&apikey={etherscan_api}"
-	).json()
-	transactions = response['result']
-	if not transactions or type(transactions) is not list:
-		return DataFrame()
-	data = san.get(
-		'price_usd/bitcoin',
-		from_date=get_hour_date(to_datetime(transactions[-1]['timeStamp'], unit='s').__str__()),
-		interval='1h'
-	)
-	data['transaction'] = NaN
-	for transaction in transactions:
-		time = get_hour_date(to_datetime(transaction['timeStamp'], unit='s').__str__())
-		value = float(transaction['value']) / 1e6
-		if transaction['from'] == address:
-			value = -value
-		if isnan(data.loc[time]['transaction']):
-			data.loc[time]['transaction'] = value
-		else:
-			data.loc[time]['transaction'] += value
-	return data
+	transactions = get_usdt_erc_transactions(address, offset, sort)
+	return build_transaction_price_data(transactions, 'price_usd/bitcoin', 'timeStamp', 'value', True,
+	                                    lambda transaction: is_etherscan_transaction_withdrawal(transaction, address))
 
 
 def assign_value_change(data):
