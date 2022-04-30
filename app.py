@@ -52,9 +52,9 @@ if address:
 			usd_purchased = sum(withdrawals.transaction * withdrawals.value)
 			coin_left = sum(deposits.transaction) - sum(withdrawals.transaction)
 			if coin_left > 0:
-				usd_purchased += coin_left * data.value[-1]
+				usd_purchased += abs(coin_left) * data.value[-1]
 			else:
-				usd_spent += coin_left * data.value[-1]
+				usd_spent += abs(coin_left) * data.value[-1]
 			profit = (usd_purchased - usd_spent) / usd_spent
 
 			write("Profit on hodling:", hodl_profit * 100, " %")
