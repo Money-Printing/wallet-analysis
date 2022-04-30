@@ -218,6 +218,7 @@ def get_chart(coin, price_coin, price, deposit, withdrawal):
 			opacity=0.8,
 			marker={
 				'size': deposit_marker_size,
+				'color': 'green',
 			},
 			customdata=deposit,
 			hovertemplate="<br>".join([
@@ -236,8 +237,10 @@ def get_chart(coin, price_coin, price, deposit, withdrawal):
 			mode="markers",
 			name="withdrawals",
 			opacity=0.8,
+			fillcolor='red',
 			marker={
 				'size': withdrawal_marker_size,
+				'color': 'red',
 			},
 			customdata=withdrawal,
 			hovertemplate="<br>".join([
