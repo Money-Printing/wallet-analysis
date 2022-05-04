@@ -48,8 +48,8 @@ def get_bitfinex_btc_wallets():
 
 def get_btc_transactions(address, offset=None):
 	return get(
-		"https://api.blockchair.com/bitcoin/dashboards/address/{address}?transaction_details=true".format(
-			address=address)).json()['data'][address]['transactions'][:None if offset == 0 else offset]
+		"https://api.blockchair.com/bitcoin/dashboards/address/{address}?transaction_details=true&limit={limit}".format(
+			address=address, limit=offset if offset > 0 else 10000)).json()['data'][address]['transactions']
 
 
 def get_eth_transactions(address, offset=None, sort='desc'):
@@ -108,6 +108,7 @@ def build_transaction_price_data(transactions, san_price_dataset_name, time_key,
 
 def get_data_btc(address, offset=0):
 	transactions = get_btc_transactions(address, offset)
+	print(transactions, len(transactions))
 	return build_transaction_price_data(transactions, 'price_usd/bitcoin', 'time', 'balance_change', False,
 	                                    is_blockchair_transaction_withdrawal)
 
