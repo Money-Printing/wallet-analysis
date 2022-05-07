@@ -1,6 +1,7 @@
 from os import getenv
 from numpy import NaN, isnan
-from pandas import DataFrame, to_datetime, read_csv
+from datetime import datetime, timedelta, timezone
+from pandas import DataFrame, to_datetime, read_csv, concat
 from plotly.subplots import make_subplots
 from plotly.graph_objects import Scatter
 from requests import get
@@ -13,12 +14,28 @@ etherscan_api = getenv('etherscan_api')
 usdt_erc_contract_address = "0xdAC17F958D2ee523a2206206994597C13D831ec7"
 
 
-def get_hour_date(dt, is_epoch=False):
-	if is_epoch:
-		dt = to_datetime(dt, unit='s').__str__()
-	date, time = dt.split()
-	hour, minute, second = time.split(':')
-	return f"{date} {hour}:00:00+00:00"
+def get_hour_date(dt, epoch_unit=None):
+	return to_datetime(dt, unit=epoch_unit).replace(minute=0, second=0, microsecond=0, tzinfo=timezone.utc)
+
+def get_san_price_dataset(san_price_dataset_name, from_date):
+	from_date = get_hour_date(from_date)
+	data = DataFrame()
+	now = get_hour_date(datetime.utcnow())
+	while from_date < now:
+		to_date = from_date + timedelta(hours=4e4)
+		data = concat([
+			data, 
+			san.get(
+				san_price_dataset_name,
+				from_date=from_date,
+				to_date=min(to_date, now),
+				interval='1h'
+			)
+		]).drop_duplicates()
+		from_date = to_date 
+	
+	return data
+
 
 
 def get_top_wallets_btc():
@@ -74,18 +91,14 @@ def is_etherscan_transaction_withdrawal(transaction, address):
 
 
 def build_transaction_price_data(transactions, san_price_dataset_name, time_key, transaction_key,
-                                 is_epoch_time, is_withdrawal):
+                                 epoch_unit, is_withdrawal):
 	if not transactions or type(transactions) is not list:
 		return DataFrame()
-	data = san.get(
-		san_price_dataset_name,
-		from_date=get_hour_date(transactions[-1][time_key], is_epoch_time),
-		interval='1h'
-	)
+	data = get_san_price_dataset(san_price_dataset_name, get_hour_date(transactions[-1][time_key], epoch_unit))
 	price = data.iloc[0]['value']
 	data['transaction'] = NaN
 	for transaction in transactions:
-		time = get_hour_date(transaction[time_key], is_epoch_time)
+		time = get_hour_date(transaction[time_key], epoch_unit)
 		amount = float(transaction[transaction_key]) / 1e8
 		if is_withdrawal(transaction) and amount > 0:
 			amount = -amount
@@ -97,31 +110,24 @@ def build_transaction_price_data(transactions, san_price_dataset_name, time_key,
 				data.loc[time]['transaction'] += amount
 		else:
 			data.loc[time] = [price, amount]
-		# if time not in data.index:
-		# 	continue
-		# if isnan(data.loc[time]['transaction']):
-		# 	data.loc[time]['transaction'] = amount
-		# else:
-		# 	data.loc[time]['transaction'] += amount
-	return data
+	return data.sort_index()
 
 
 def get_data_btc(address, offset=0):
 	transactions = get_btc_transactions(address, offset)
-	print(transactions, len(transactions))
-	return build_transaction_price_data(transactions, 'price_usd/bitcoin', 'time', 'balance_change', False,
+	return build_transaction_price_data(transactions, 'price_usd/bitcoin', 'time', 'balance_change', None,
 	                                    is_blockchair_transaction_withdrawal)
 
 
 def get_data_eth(address, offset=None, sort='desc'):
 	transactions = get_eth_transactions(address, offset, sort)
-	return build_transaction_price_data(transactions, 'price_usd/ethereum', 'timeStamp', 'value', True,
+	return build_transaction_price_data(transactions, 'price_usd/ethereum', 'timeStamp', 'value', 's',
 	                                    lambda transaction: is_etherscan_transaction_withdrawal(transaction, address))
 
 
 def get_data_usdt_erc(address, offset=0, sort='desc'):
 	transactions = get_usdt_erc_transactions(address, offset, sort)
-	return build_transaction_price_data(transactions, 'price_usd/bitcoin', 'timeStamp', 'value', True,
+	return build_transaction_price_data(transactions, 'price_usd/bitcoin', 'timeStamp', 'value', 's',
 	                                    lambda transaction: is_etherscan_transaction_withdrawal(transaction, address))
 
 
