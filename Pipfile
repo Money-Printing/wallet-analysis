@@ -16,6 +16,7 @@ undetected-chromedriver = "*"
 
 [dev-packages]
 jupyter = "*"
+pipenv-to-requirements = "*"
 
 [requires]
 python_version = "3.9"
