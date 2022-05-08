@@ -227,7 +227,7 @@ def get_chart(coin, price_coin, price, deposit, withdrawal):
 				'size': deposit_marker_size,
 				'color': 'green',
 			},
-			customdata=deposit,
+			customdata=deposit.fillna("NA"),
 			hovertemplate="<br>".join([
 				"%{x}",
 				"Price (USD): %{y}",
@@ -249,7 +249,7 @@ def get_chart(coin, price_coin, price, deposit, withdrawal):
 				'size': withdrawal_marker_size,
 				'color': 'red',
 			},
-			customdata=withdrawal,
+			customdata=withdrawal.fillna("NA"),
 			hovertemplate="<br>".join([
 				"%{x}",
 				"Price (USD): %{y}",
