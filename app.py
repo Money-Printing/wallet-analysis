@@ -1,5 +1,5 @@
 from streamlit import title, subheader, write, text_input, warning, plotly_chart, number_input, set_page_config, \
-	cache, sidebar, checkbox
+	cache, sidebar, checkbox, error
 from fun import *
 
 set_page_config(layout="wide")
@@ -35,7 +35,12 @@ threshold = number_input("Input threshold transaction", min_value=0)
 inverse = checkbox('Inverse Deposit/Withdrawal')
 
 if address:
-	data = get_data(address=address, offset=offset)
+	try:
+		data = get_data(address=address, offset=offset)
+	except Exception as e:
+		print(e)
+		data = []
+		error("Error occured in calling APIs. Maybe API limits reached!!")		
 
 	if len(data) == 0:
 		warning("No transaction in the wallet matching the filter")
