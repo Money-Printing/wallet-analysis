@@ -149,7 +149,7 @@ def get_deposits_withdrawals(data, threshold=0, inverse=False):
 	return deposit, withdrawal
 
 
-def get_chart(coin, price_coin, price, deposit, withdrawal):
+def get_chart(coin, price_coin, price, deposit, withdrawal, deposit_marker_color, withdrawal_marker_color):
 	fig = make_subplots(subplot_titles=[f'Wallet Activity vs {price_coin} Price'])
 	fig.add_trace(
 		Scatter(
@@ -225,7 +225,7 @@ def get_chart(coin, price_coin, price, deposit, withdrawal):
 			opacity=0.8,
 			marker={
 				'size': deposit_marker_size,
-				'color': 'green',
+				'color': deposit_marker_color,
 			},
 			customdata=deposit.fillna("NA"),
 			hovertemplate="<br>".join([
@@ -247,7 +247,7 @@ def get_chart(coin, price_coin, price, deposit, withdrawal):
 			fillcolor='red',
 			marker={
 				'size': withdrawal_marker_size,
-				'color': 'red',
+				'color': withdrawal_marker_color,
 			},
 			customdata=withdrawal.fillna("NA"),
 			hovertemplate="<br>".join([
